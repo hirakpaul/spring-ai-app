@@ -1,299 +1,504 @@
-# Spring AI App - Security Integration Guide
+# Spring AI App - Integration Guide
 
-This application has been integrated with the **spring-security-starter** library for API Key-based authentication and Client Application authorization.
+Complete guide for integrating with and extending the Spring AI App Customer Management API.
 
-## 🎯 What Was Done
+## Overview
 
-### 1. Added Security Library Dependency
+This guide provides detailed information for developers who want to:
+- Integrate with the Customer API
+- Extend the application with new features
+- Understand the application architecture
+- Deploy the application to production
 
-The `spring-security-starter` library has been added to [pom.xml:39-44](pom.xml#L39-L44):
+## Table of Contents
+- [Overview](#overview)
+- [API Integration](#api-integration)
+- [Application Architecture](#application-architecture)
+- [Development Guide](#development-guide)
+- [Testing](#testing)
+- [Production Deployment](#production-deployment)
+- [Troubleshooting](#troubleshooting)
 
+## API Integration
+
+### Base URL
+
+```
+http://localhost:8080/api/v1
+```
+
+### Content Type
+
+All requests and responses use `application/json`.
+
+### Available Endpoints
+
+#### Customer Operations
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|--------------|
+| GET | `/customers` | Get all customers | - |
+| GET | `/customers/{id}` | Get customer by ID | - |
+| GET | `/customers/email/{email}` | Get customer by email | - |
+| GET | `/customers/search?term={term}` | Search customers | - |
+| GET | `/customers/count` | Get total count | - |
+| POST | `/customers` | Create customer | CustomerRequest |
+| PUT | `/customers/{id}` | Update customer | CustomerRequest |
+| DELETE | `/customers/{id}` | Delete customer | - |
+
+### Request/Response Models
+
+#### CustomerRequest
+```json
+{
+  "firstName": "string (required)",
+  "lastName": "string (required)",
+  "email": "string (required, valid email)",
+  "phoneNumber": "string (optional)"
+}
+```
+
+#### CustomerResponse
+```json
+{
+  "id": "long",
+  "firstName": "string",
+  "lastName": "string",
+  "email": "string",
+  "phoneNumber": "string",
+  "createdAt": "datetime",
+  "updatedAt": "datetime"
+}
+```
+
+### Validation Rules
+
+- **firstName**: Required, not blank
+- **lastName**: Required, not blank
+- **email**: Required, valid email format, unique across customers
+- **phoneNumber**: Optional
+
+### Error Handling
+
+The API returns standard HTTP status codes:
+
+- **200 OK** - Request successful
+- **201 Created** - Resource created successfully
+- **204 No Content** - Successful deletion
+- **400 Bad Request** - Validation error
+- **404 Not Found** - Resource not found
+- **409 Conflict** - Duplicate email
+- **500 Internal Server Error** - Server error
+
+#### Error Response Format
+```json
+{
+  "timestamp": "2025-12-14T10:30:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Validation failed",
+  "errors": {
+    "email": "must be a well-formed email address"
+  }
+}
+```
+
+## Application Architecture
+
+### Layered Architecture
+
+The application follows a clean layered architecture:
+
+```
+┌─────────────────────────────────┐
+│     Presentation Layer          │
+│  (Controllers, DTOs, Mappers)   │
+└────────────┬────────────────────┘
+             │
+┌────────────▼────────────────────┐
+│      Service Layer              │
+│   (Business Logic)              │
+└────────────┬────────────────────┘
+             │
+┌────────────▼────────────────────┐
+│    Persistence Layer            │
+│  (Repositories, Entities)       │
+└────────────┬────────────────────┘
+             │
+┌────────────▼────────────────────┐
+│       Database                  │
+│      (PostgreSQL)               │
+└─────────────────────────────────┘
+```
+
+### Package Structure
+
+```
+com.rewritesolutions.ai.spring_ai_app
+├── controller/          # REST controllers
+│   └── CustomerController.java
+├── dto/                 # Data Transfer Objects
+│   ├── CustomerRequest.java
+│   ├── CustomerResponse.java
+│   └── CustomerMapper.java
+├── entity/              # JPA entities
+│   └── Customer.java
+├── exception/           # Exception handling
+│   ├── GlobalExceptionHandler.java
+│   ├── CustomerNotFoundException.java
+│   └── DuplicateEmailException.java
+├── repository/          # Spring Data repositories
+│   └── CustomerRepository.java
+├── service/             # Business logic
+│   ├── CustomerService.java
+│   └── CustomerServiceImpl.java
+└── SpringAiAppApplication.java
+```
+
+### Key Components
+
+#### Controllers
+- Handle HTTP requests and responses
+- Validate input using Bean Validation
+- Map between DTOs and entities
+- Return appropriate HTTP status codes
+
+#### Services
+- Contain business logic
+- Manage transactions
+- Throw business exceptions
+- Coordinate between repositories
+
+#### Repositories
+- Extend Spring Data JPA repositories
+- Provide database operations
+- Support custom queries
+
+#### Exception Handler
+- Global exception handling using `@ControllerAdvice`
+- Converts exceptions to appropriate HTTP responses
+- Provides consistent error format
+
+## Development Guide
+
+### Adding New Endpoints
+
+1. **Create Entity** (if needed)
+```java
+@Entity
+@Table(name = "your_entity")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class YourEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // Add fields
+}
+```
+
+2. **Create Repository**
+```java
+@Repository
+public interface YourRepository extends JpaRepository<YourEntity, Long> {
+    // Add custom queries if needed
+}
+```
+
+3. **Create Service**
+```java
+@Service
+public class YourService {
+    private final YourRepository repository;
+
+    // Implement business logic
+}
+```
+
+4. **Create Controller**
+```java
+@RestController
+@RequestMapping("/api/v1/your-resource")
+public class YourController {
+    private final YourService service;
+
+    // Implement endpoints
+}
+```
+
+### Database Migrations
+
+For production, consider using:
+- **Flyway** - Version-controlled database migrations
+- **Liquibase** - Database schema change management
+
+Add to `pom.xml`:
 ```xml
 <dependency>
-    <groupId>com.rewritesolutions</groupId>
-    <artifactId>spring-security-starter</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <groupId>org.flywaydb</groupId>
+    <artifactId>flyway-core</artifactId>
 </dependency>
 ```
 
-### 2. Removed Duplicate Security Code
+### Adding Validation
 
-All security-related code has been moved to the reusable library:
-- ✅ Removed local `ApiKey`, `ClientApp`, `AuthorizationService`, etc.
-- ✅ Using library's `AuthTokenFilter`, `@AuthorizeClient`, and more
-- ✅ Clean separation between business logic and security concerns
+Use Bean Validation annotations:
+```java
+public class YourRequest {
+    @NotBlank(message = "Name is required")
+    private String name;
 
-### 3. Updated Configuration
+    @Email(message = "Invalid email format")
+    private String email;
 
-**SecurityConfig** - [SecurityConfig.java](src/main/java/com/rewritesolutions/ai/spring_ai_app/config/SecurityConfig.java)
-- Now imports `AuthTokenFilter` from security library
-- Configured to use API key authentication via `X-Auth-Token` header
+    @Min(value = 0, message = "Must be positive")
+    private Integer age;
+}
+```
 
-**GlobalExceptionHandler** - [GlobalExceptionHandler.java](src/main/java/com/rewritesolutions/ai/spring_ai_app/exception/GlobalExceptionHandler.java)
-- Updated to handle `UnauthorizedClientException` from security library
+### Custom Queries
 
-### 4. Created Example Controllers
+Add custom queries to repositories:
+```java
+@Repository
+public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
-**ApiKeyManagementController** - [ApiKeyManagementController.java](src/main/java/com/rewritesolutions/ai/spring_ai_app/controller/ApiKeyManagementController.java)
-- Admin-only endpoints for CRUD operations on API keys
-- Create, list, revoke, and delete API keys
+    @Query("SELECT c FROM Customer c WHERE LOWER(c.email) = LOWER(:email)")
+    Optional<Customer> findByEmailIgnoreCase(@Param("email") String email);
 
-**ExternalApiController** - [ExternalApiController.java](src/main/java/com/rewritesolutions/ai/spring_ai_app/controller/ExternalApiController.java)
-- Demonstrates **both authorization patterns**:
-  1. **Declarative**: `@AuthorizeClient(ClientApp.PEGA)` (recommended)
-  2. **Programmatic**: `authorizationService.authorize(...)` (like PEGA example)
+    @Query("SELECT c FROM Customer c WHERE " +
+           "LOWER(c.firstName) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
+           "LOWER(c.lastName) LIKE LOWER(CONCAT('%', :term, '%'))")
+    List<Customer> searchByName(@Param("term") String term);
+}
+```
 
-### 5. Sample API Keys (Dev Profile)
+## Testing
 
-**DataInitializer** - [DataInitializer.java](src/main/java/com/rewritesolutions/ai/spring_ai_app/config/DataInitializer.java)
-- Automatically creates 6 sample API keys on startup (dev profile only)
-
-## 🚀 How to Use
-
-### Start the Application
+### Running Tests
 
 ```bash
-mvn clean install
-mvn spring-boot:run
+# Run all tests
+mvn test
+
+# Run specific test class
+mvn test -Dtest=CustomerRepositoryTest
+
+# Run tests with coverage
+mvn clean test jacoco:report
 ```
 
-The app starts with `dev` profile active (see [application.properties](src/main/resources/application.properties#L4))
-
-### Sample API Keys Created on Startup
+### Test Structure
 
 ```
-Mobile App:       MOBILE_DEV_TOKEN_67890
-Web Portal:       WEB_DEV_TOKEN_ABCDE
-External API:     EXTERNAL_DEV_TOKEN_FGHIJ
-Admin Dashboard:  ADMIN_DEV_TOKEN_KLMNO
-Internal Service: INTERNAL_DEV_TOKEN_PQRST
+src/test/java/
+└── com/rewritesolutions/ai/spring_ai_app/
+    ├── repository/
+    │   └── CustomerRepositoryTest.java
+    ├── service/
+    │   └── CustomerServiceTest.java
+    └── controller/
+        └── CustomerControllerTest.java
 ```
 
-### Test the API
-
-#### 1. Register an Admin User (for Basic Auth)
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "password": "admin123",
-    "email": "admin@example.com",
-    "roles": ["ADMIN"]
-  }'
-```
-
-#### 2. Access Customer Endpoints (Requires User/Admin Role)
-
-```bash
-# Using Basic Auth
-curl -X GET http://localhost:8080/api/v1/customers \
-  -u admin:admin123
-```
-
-#### 3. Access External API Endpoints (Requires API Key)
-
-**Pattern 1: Declarative with @AuthorizeClient**
-
-```bash
-# PEGA endpoint (only PEGA token works)
-curl -X GET http://localhost:8080/api/v1/external/pega-customers \
-  -H "X-Auth-Token: PEGA_DEV_TOKEN_12345"
-
-# Mobile/Web endpoint (both tokens work)
-curl -X GET http://localhost:8080/api/v1/external/customers/1 \
-  -H "X-Auth-Token: MOBILE_DEV_TOKEN_67890"
-
-curl -X GET http://localhost:8080/api/v1/external/customers/1 \
-  -H "X-Auth-Token: WEB_DEV_TOKEN_ABCDE"
-```
-
-**Pattern 2: Programmatic (like PEGA example)**
-
-```bash
-# Manual authorization in controller
-curl -X GET "http://localhost:8080/api/v1/external/pega-data?param1=value1" \
-  -H "X-Auth-Token: PEGA_DEV_TOKEN_12345"
-```
-
-#### 4. Manage API Keys (Admin Only)
-
-```bash
-# List all API keys
-curl -X GET http://localhost:8080/api/v1/api-keys \
-  -u admin:admin123
-
-# Create new API key
-curl -X POST http://localhost:8080/api/v1/api-keys \
-  -u admin:admin123 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clientApp": "PEGA",
-    "description": "Production PEGA integration",
-    "allowedEndpoints": ["/api/v1/external/pega-.*"],
-    "expiresAt": "2026-12-31T23:59:59"
-  }'
-
-# Revoke an API key
-curl -X PUT http://localhost:8080/api/v1/api-keys/1/revoke \
-  -u admin:admin123
-
-# Delete an API key
-curl -X DELETE http://localhost:8080/api/v1/api-keys/1 \
-  -u admin:admin123
-```
-
-## 📋 Authorization Patterns
-
-### Pattern 1: Declarative (Recommended)
-
-Clean, readable, and easy to maintain:
+### Writing Integration Tests
 
 ```java
-@GetMapping("/pega-customers")
-@AuthorizeClient(ClientApp.PEGA)
-public ResponseEntity<List<CustomerResponse>> getPegaCustomers() {
-    return ResponseEntity.ok(customerService.getAllCustomers());
+@SpringBootTest
+@AutoConfigureTestDatabase
+@Transactional
+class CustomerRepositoryTest {
+
+    @Autowired
+    private CustomerRepository repository;
+
+    @Test
+    void shouldSaveCustomer() {
+        Customer customer = new Customer();
+        customer.setFirstName("John");
+        customer.setLastName("Doe");
+        customer.setEmail("john@example.com");
+
+        Customer saved = repository.save(customer);
+
+        assertThat(saved.getId()).isNotNull();
+        assertThat(saved.getEmail()).isEqualTo("john@example.com");
+    }
 }
 ```
 
-### Pattern 2: Programmatic (For Complex Logic)
+## Production Deployment
 
-More control, useful when migrating from existing patterns:
+### Checklist
 
-```java
-@GetMapping("/pega-data")
-public ResponseEntity<?> getPegaData(HttpServletRequest request) {
-    String[] acceptedSources = {ClientApp.PEGA.getAppName()};
-    authorizationService.authorize(
-        acceptedSources,
-        (String) request.getAttribute("authToken"),
-        request.getRequestURI()
-    );
+Before deploying to production:
 
-    // Your business logic
-    return ResponseEntity.ok(data);
-}
+- [ ] Update `application.properties` for production
+- [ ] Configure database connection pooling
+- [ ] Enable HTTPS/TLS
+- [ ] Set up monitoring and logging
+- [ ] Configure actuator endpoints
+- [ ] Set up database backups
+- [ ] Review security settings
+- [ ] Configure CORS if needed
+- [ ] Set up CI/CD pipeline
+- [ ] Prepare rollback strategy
+
+### Production Configuration
+
+**application-prod.properties:**
+```properties
+# Server
+server.port=8080
+
+# Database
+spring.datasource.url=${DB_URL}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+spring.datasource.hikari.maximum-pool-size=20
+spring.datasource.hikari.minimum-idle=5
+
+# JPA
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.format_sql=false
+
+# Actuator
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=when-authorized
+
+# Logging
+logging.level.root=INFO
+logging.level.com.rewritesolutions=INFO
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %msg%n
 ```
 
-## 🔒 Security Configuration
+### Docker Deployment
 
-### Current Setup
-
-1. **Basic Auth** - For user authentication (admin, regular users)
-2. **API Keys** - For external client authentication (PEGA, Mobile, etc.)
-3. **@PreAuthorize** - For role-based authorization on endpoints
-4. **@AuthorizeClient** - For client app-based authorization
-
-### Public Endpoints
-
-- `/api/v1/auth/**` - Registration and login
-- `/actuator/**` - Health and metrics
-
-### Protected Endpoints
-
-- `/api/v1/customers/**` - Requires USER or ADMIN role (Basic Auth)
-- `/api/v1/api-keys/**` - Requires ADMIN role (Basic Auth)
-- `/api/v1/external/**` - Requires valid API key (X-Auth-Token header)
-
-## 📊 Error Responses
-
-### 401 Unauthorized (No credentials)
-```json
-{
-  "timestamp": "2025-12-13T10:30:00",
-  "status": 401,
-  "error": "Unauthorized",
-  "message": "Full authentication is required"
-}
+**Dockerfile:**
+```dockerfile
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY target/spring-ai-app-0.0.1-SNAPSHOT.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
 
-### 403 Forbidden (Invalid API key)
-```json
-{
-  "timestamp": "2025-12-13T10:30:00",
-  "status": 403,
-  "error": "Forbidden",
-  "message": "Invalid or inactive auth token"
-}
-```
-
-### 403 Forbidden (Wrong client)
-```json
-{
-  "timestamp": "2025-12-13T10:30:00",
-  "status": 403,
-  "error": "Forbidden",
-  "message": "Client 'MOBILE_APP' is not authorized to access this endpoint. Accepted sources: [PEGA]"
-}
-```
-
-## 🎓 Next Steps
-
-### For Development
-
-1. **Test all endpoints** using the sample API keys
-2. **Create additional API keys** via the management controller
-3. **Add new external endpoints** to `ExternalApiController`
-4. **Customize endpoint restrictions** per API key
-
-### For Production
-
-1. **Change profile to `prod`** in application.properties
-2. **Generate secure API keys** (DataInitializer won't run in prod)
-3. **Set appropriate expiration dates** for API keys
-4. **Enable HTTPS** for secure token transmission
-5. **Add rate limiting** (consider Spring Cloud Gateway or similar)
-6. **Monitor API key usage** via `lastUsedAt` timestamps
-
-### Additional Features to Consider
-
-1. **JWT Authentication** - For user sessions (implement separately)
-2. **API Key Rotation** - Automated key rotation mechanism
-3. **Usage Analytics** - Track API calls per client
-4. **Rate Limiting** - Per-client rate limits
-5. **Webhook Support** - Event notifications to clients
-
-## 📚 Documentation
-
-- **Security Library**: `/home/paul/workspace/spring-security-starter/README.md`
-- **Usage Guide**: `/home/paul/workspace/spring-security-starter/USAGE_GUIDE.md`
-
-## 🐛 Troubleshooting
-
-### Issue: API key not working
-
-**Solution**: Check that:
-1. Token is sent in `X-Auth-Token` header (not Authorization)
-2. API key is active (not revoked)
-3. API key hasn't expired
-4. Endpoint matches allowed patterns
-
-### Issue: "No HTTP request found"
-
-**Solution**: Make sure you're using `@AuthorizeClient` on a controller method (not service method)
-
-### Issue: ClassNotFoundException for security classes
-
-**Solution**: Run `mvn clean install` in both projects:
+**Build and run:**
 ```bash
-cd /home/paul/workspace/spring-security-starter
-mvn clean install
+# Build application
+mvn clean package
 
-cd /home/paul/workspace/spring-ai-app
-mvn clean install
+# Build Docker image
+docker build -t spring-ai-app:latest .
+
+# Run with Docker Compose
+docker compose up -d
 ```
 
-## ✅ Summary
+### Environment Variables
 
-Your application now has:
-- ✅ Reusable security library integrated
-- ✅ API key-based authentication for external clients
-- ✅ Client app authorization with endpoint restrictions
-- ✅ Both declarative and programmatic patterns
-- ✅ Admin interface for API key management
-- ✅ Sample data for testing
-- ✅ Production-ready security configuration
+Set these environment variables in production:
 
-Everything is ready to use! 🚀
+```bash
+DB_URL=jdbc:postgresql://localhost:5432/production_db
+DB_USERNAME=prod_user
+DB_PASSWORD=secure_password
+SPRING_PROFILES_ACTIVE=prod
+```
+
+### Monitoring
+
+#### Health Checks
+```bash
+curl http://localhost:8080/actuator/health
+```
+
+#### Metrics
+```bash
+curl http://localhost:8080/actuator/metrics
+```
+
+### Logging
+
+Configure logging for production:
+
+```properties
+# File logging
+logging.file.name=/var/log/spring-ai-app/application.log
+logging.file.max-size=10MB
+logging.file.max-history=30
+
+# Log patterns
+logging.pattern.file=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### Database Connection Failed
+
+**Symptoms:**
+- Application fails to start
+- Error: "Unable to connect to database"
+
+**Solutions:**
+1. Verify PostgreSQL is running: `docker ps`
+2. Check database credentials in `application.properties`
+3. Ensure database exists: `docker exec -it postgres psql -U compose-postgres -l`
+4. Check port 5432 is not in use: `netstat -an | grep 5432`
+
+#### Port Already in Use
+
+**Symptoms:**
+- Error: "Port 8080 is already in use"
+
+**Solutions:**
+1. Check what's using the port: `lsof -i :8080` (Mac/Linux) or `netstat -ano | findstr :8080` (Windows)
+2. Kill the process or change the port in `application.properties`
+3. Use a different port: `server.port=8081`
+
+#### Validation Errors
+
+**Symptoms:**
+- 400 Bad Request responses
+- Validation error messages
+
+**Solutions:**
+1. Check request body matches required format
+2. Ensure all required fields are present
+3. Verify email format is valid
+4. Check for duplicate emails
+
+#### Application Crashes
+
+**Symptoms:**
+- Application stops unexpectedly
+- Out of memory errors
+
+**Solutions:**
+1. Check application logs: `docker logs <container-name>`
+2. Increase JVM memory: `java -Xmx512m -jar app.jar`
+3. Check for memory leaks
+4. Review database connection pool settings
+
+### Getting Help
+
+1. Check application logs
+2. Review this integration guide
+3. Check the main [README.md](README.md)
+4. Search for similar issues in the project repository
+5. Contact the development team
+
+## Additional Resources
+
+- [Spring Boot Documentation](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/)
+- [Spring Data JPA Documentation](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+
+---
+
+**Spring AI App - Customer Management API**

@@ -1,6 +1,6 @@
 # Spring AI App
 
-A Spring Boot REST API application with secure API key-based authentication using a custom reusable security library.
+A Spring Boot REST API application for managing customer data with PostgreSQL database integration.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -10,22 +10,23 @@ A Spring Boot REST API application with secure API key-based authentication usin
 - [API Documentation](#api-documentation)
 - [Security](#security)
 - [Database](#database)
-- [Testing with Postman](#testing-with-postman)
+- [Testing](#testing)
 - [Project Structure](#project-structure)
+- [Monitoring](#monitoring)
+- [Contributing](#contributing)
 
 ## Overview
 
-This application provides a REST API for managing customer data with enterprise-grade security. It uses a custom `spring-security-starter` library for API key-based authentication and client authorization.
+This application provides a REST API for managing customer data with a clean, modern architecture using Spring Boot and PostgreSQL.
 
 ### Key Features
 - ✅ RESTful API for Customer CRUD operations
-- ✅ API Key-based authentication
-- ✅ Client app authorization (WEB_PORTAL, MOBILE_APP, ADMIN_DASHBOARD, etc.)
 - ✅ PostgreSQL database with JPA/Hibernate
 - ✅ Docker Compose for easy deployment
 - ✅ Actuator endpoints for monitoring
-- ✅ Request validation
+- ✅ Request validation with Bean Validation
 - ✅ Global exception handling
+- ✅ Clean layered architecture (Controller → Service → Repository)
 
 ## Architecture
 
@@ -33,37 +34,38 @@ This application provides a REST API for managing customer data with enterprise-
 ┌─────────────────────┐
 │   Client Apps       │
 │  (Postman, Web,     │
-│   Mobile, PEGA)     │
+│   Mobile, etc.)     │
 └──────────┬──────────┘
-           │ X-Auth-Token
+           │ HTTP REST API
            ▼
 ┌─────────────────────┐
 │  Spring AI App      │
 │  ┌───────────────┐  │
 │  │ Controllers   │  │
+│  │  - Customer   │  │
 │  └───────┬───────┘  │
 │  ┌───────▼───────┐  │
 │  │ Services      │  │
+│  │  - Business   │  │
+│  │    Logic      │  │
 │  └───────┬───────┘  │
 │  ┌───────▼───────┐  │
 │  │ Repositories  │  │
-│  └───────────────┘  │
-└──────────┬──────────┘
-           │
-┌──────────▼──────────┐
-│ Security Library    │
-│ (spring-security-   │
-│  starter)           │
-│ ┌─────────────────┐ │
-│ │ Authorization   │ │
-│ │ Service         │ │
-│ └─────────────────┘ │
+│  │  - JPA/       │  │
+│  │    Hibernate  │  │
+│  └───────┬───────┘  │
 └──────────┬──────────┘
            │
 ┌──────────▼──────────┐
 │  PostgreSQL DB      │
-│  - customers        │
-│  - api_keys         │
+│  ┌───────────────┐  │
+│  │ customers     │  │
+│  │  - id         │  │
+│  │  - firstName  │  │
+│  │  - lastName   │  │
+│  │  - email      │  │
+│  │  - phone      │  │
+│  └───────────────┘  │
 └─────────────────────┘
 ```
 
@@ -73,20 +75,27 @@ This application provides a REST API for managing customer data with enterprise-
 - **Maven 3.8+**
 - **Docker & Docker Compose**
 - **PostgreSQL** (via Docker)
-- **spring-security-starter** library (must be installed in local Maven repository)
 
 ## Getting Started
 
-### 1. Install Security Library
-
-First, build and install the `spring-security-starter` library:
+### Quick Start
 
 ```bash
-cd /home/paul/workspace/spring-security-starter
-mvn clean install
-```
+# 1. Start PostgreSQL
+docker compose -f src/main/docker/docker-compose.yml up -d
 
-### 2. Start the Database
+# 2. Run the application
+mvn spring-boot:run
+```
+# 3. Run the application using UI
+Right click on docker-compose.yml. Select compose up.
+it will start the application, Postgress database
+
+The application will be available at `http://localhost:8080`
+
+### Full Setup Guide
+
+#### 1. Start the Database
 
 Start PostgreSQL using Docker Compose:
 
@@ -100,13 +109,13 @@ This will start PostgreSQL on `localhost:5432` with:
 - Username: `compose-postgres`
 - Password: `compose-postgres`
 
-### 3. Build the Application
+#### 2. Build the Application
 
 ```bash
 mvn clean package
 ```
 
-### 4. Run the Application
+#### 3. Run the Application
 
 **Option A: Using Maven**
 ```bash
@@ -125,25 +134,22 @@ docker compose -f src/main/docker/docker-compose.yml up
 
 The application will start on `http://localhost:8080`
 
-### 5. Insert Sample API Keys
+#### 4. (Optional) Insert Sample Data
 
-Connect to PostgreSQL and insert sample API keys:
+Connect to PostgreSQL and insert sample customer data:
 
 ```sql
 -- Connect to database
 docker exec -it postgres psql -U compose-postgres -d compose-postgres
 
--- Insert API keys
-INSERT INTO api_keys (token, client_app, description, active, expires_at, created_at) VALUES
-('web-portal-key-12345', 'WEB_PORTAL', 'Web Portal Client - Read access', true, NOW() + INTERVAL '1 year', NOW()),
-('mobile-app-key-67890', 'MOBILE_APP', 'Mobile App Client - Read access', true, NOW() + INTERVAL '1 year', NOW()),
-('admin-dashboard-key-11111', 'ADMIN_DASHBOARD', 'Admin Dashboard - Full CRUD', true, NOW() + INTERVAL '1 year', NOW()),
-('internal-service-key-22222', 'INTERNAL_SERVICE', 'Internal Service - Full CRUD', true, NOW() + INTERVAL '1 year', NOW()),
-('pega-integration-key-33333', 'PEGA', 'PEGA Integration', true, NOW() + INTERVAL '1 year', NOW()),
-('external-api-key-44444', 'EXTERNAL_API', 'External API Client', true, NOW() + INTERVAL '1 year', NOW());
+-- Insert sample customers
+INSERT INTO customers (first_name, last_name, email, phone_number, created_at, updated_at) VALUES
+('John', 'Doe', 'john.doe@example.com', '+1234567890', NOW(), NOW()),
+('Jane', 'Smith', 'jane.smith@example.com', '+1987654321', NOW(), NOW()),
+('Bob', 'Johnson', 'bob.johnson@example.com', '+1555555555', NOW(), NOW());
 
 -- Verify
-SELECT * FROM api_keys;
+SELECT * FROM customers;
 ```
 
 ## API Documentation
@@ -155,35 +161,34 @@ http://localhost:8080/api/v1
 
 ### Customer Endpoints
 
-| Method | Endpoint | Description | Allowed Clients |
-|--------|----------|-------------|----------------|
-| GET | `/customers` | Get all customers | WEB_PORTAL, MOBILE_APP, ADMIN_DASHBOARD, INTERNAL_SERVICE |
-| GET | `/customers/{id}` | Get customer by ID | WEB_PORTAL, MOBILE_APP, ADMIN_DASHBOARD, INTERNAL_SERVICE |
-| GET | `/customers/email/{email}` | Get customer by email | WEB_PORTAL, MOBILE_APP, ADMIN_DASHBOARD, INTERNAL_SERVICE |
-| GET | `/customers/search?term={term}` | Search customers | WEB_PORTAL, MOBILE_APP, ADMIN_DASHBOARD, INTERNAL_SERVICE |
-| GET | `/customers/count` | Count customers | WEB_PORTAL, MOBILE_APP, ADMIN_DASHBOARD, INTERNAL_SERVICE |
-| POST | `/customers` | Create customer | ADMIN_DASHBOARD, INTERNAL_SERVICE |
-| PUT | `/customers/{id}` | Update customer | ADMIN_DASHBOARD, INTERNAL_SERVICE |
-| DELETE | `/customers/{id}` | Delete customer | ADMIN_DASHBOARD, INTERNAL_SERVICE |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/customers` | Get all customers |
+| GET | `/customers/{id}` | Get customer by ID |
+| GET | `/customers/email/{email}` | Get customer by email |
+| GET | `/customers/search?term={term}` | Search customers by name or email |
+| GET | `/customers/count` | Get total count of customers |
+| POST | `/customers` | Create a new customer |
+| PUT | `/customers/{id}` | Update an existing customer |
+| DELETE | `/customers/{id}` | Delete a customer |
 
 ### Request/Response Examples
 
 #### Create Customer (POST)
-```json
+```http
 POST /api/v1/customers
-Headers:
-  X-Auth-Token: admin-dashboard-key-11111
-  Content-Type: application/json
+Content-Type: application/json
 
-Body:
 {
     "firstName": "John",
     "lastName": "Doe",
     "email": "john.doe@example.com",
     "phoneNumber": "+1234567890"
 }
+```
 
-Response (201 Created):
+**Response (201 Created):**
+```json
 {
     "id": 1,
     "firstName": "John",
@@ -196,12 +201,12 @@ Response (201 Created):
 ```
 
 #### Get All Customers (GET)
-```json
+```http
 GET /api/v1/customers
-Headers:
-  X-Auth-Token: web-portal-key-12345
+```
 
-Response (200 OK):
+**Response (200 OK):**
+```json
 [
     {
         "id": 1,
@@ -215,56 +220,71 @@ Response (200 OK):
 ]
 ```
 
-## Security
+#### Update Customer (PUT)
+```http
+PUT /api/v1/customers/1
+Content-Type: application/json
 
-### Authentication
-
-All API endpoints require the `X-Auth-Token` header:
-
-```
-X-Auth-Token: your-api-key-here
-```
-
-### Client Applications
-
-The system supports different client application types:
-
-- **WEB_PORTAL** - Read-only access to customer data
-- **MOBILE_APP** - Read-only access to customer data
-- **ADMIN_DASHBOARD** - Full CRUD access
-- **INTERNAL_SERVICE** - Full CRUD access
-- **PEGA** - Custom integration access
-- **EXTERNAL_API** - Limited access
-
-### Authorization Flow
-
-1. Client sends request with `X-Auth-Token` header
-2. `AuthTokenFilter` extracts the token from the header
-3. `AuthorizationService` validates the token:
-   - Checks if token exists in database
-   - Verifies token is active and not expired
-   - Validates client app has permission for the endpoint
-4. If authorized, request proceeds; otherwise, returns 403 Forbidden
-
-### Error Responses
-
-**403 Forbidden - Unauthorized Client**
-```json
 {
-    "timestamp": "2025-12-14T03:00:00",
-    "status": 403,
-    "error": "Forbidden",
-    "message": "Client WEB_PORTAL is not authorized to access this endpoint"
+    "firstName": "John",
+    "lastName": "Smith",
+    "email": "john.smith@example.com",
+    "phoneNumber": "+1234567890"
 }
 ```
 
-**403 Forbidden - Invalid Token**
+**Response (200 OK):**
+```json
+{
+    "id": 1,
+    "firstName": "John",
+    "lastName": "Smith",
+    "email": "john.smith@example.com",
+    "phoneNumber": "+1234567890",
+    "createdAt": "2025-12-14T03:00:00",
+    "updatedAt": "2025-12-14T03:10:00"
+}
+```
+
+#### Delete Customer (DELETE)
+```http
+DELETE /api/v1/customers/1
+```
+
+**Response (204 No Content)**
+
+### Error Responses
+
+**400 Bad Request - Validation Error**
 ```json
 {
     "timestamp": "2025-12-14T03:00:00",
-    "status": 403,
-    "error": "Forbidden",
-    "message": "Invalid or expired API key"
+    "status": 400,
+    "error": "Bad Request",
+    "message": "Validation failed",
+    "errors": {
+        "email": "must be a well-formed email address"
+    }
+}
+```
+
+**404 Not Found**
+```json
+{
+    "timestamp": "2025-12-14T03:00:00",
+    "status": 404,
+    "error": "Not Found",
+    "message": "Customer not found with id: 999"
+}
+```
+
+**409 Conflict - Duplicate Email**
+```json
+{
+    "timestamp": "2025-12-14T03:00:00",
+    "status": 409,
+    "error": "Conflict",
+    "message": "Customer with email john.doe@example.com already exists"
 }
 ```
 
@@ -273,23 +293,13 @@ The system supports different client application types:
 ### Schema
 
 **customers** table:
-- `id` (BIGSERIAL PRIMARY KEY)
-- `first_name` (VARCHAR)
-- `last_name` (VARCHAR)
-- `email` (VARCHAR UNIQUE)
-- `phone_number` (VARCHAR)
-- `created_at` (TIMESTAMP)
-- `updated_at` (TIMESTAMP)
-
-**api_keys** table (from security library):
-- `id` (BIGSERIAL PRIMARY KEY)
-- `token` (VARCHAR UNIQUE)
-- `client_app` (VARCHAR)
-- `description` (VARCHAR)
-- `active` (BOOLEAN)
-- `expires_at` (TIMESTAMP)
-- `created_at` (TIMESTAMP)
-- `last_used_at` (TIMESTAMP)
+- `id` (BIGSERIAL PRIMARY KEY) - Unique identifier
+- `first_name` (VARCHAR NOT NULL) - Customer's first name
+- `last_name` (VARCHAR NOT NULL) - Customer's last name
+- `email` (VARCHAR UNIQUE NOT NULL) - Customer's email address (must be unique)
+- `phone_number` (VARCHAR) - Customer's phone number
+- `created_at` (TIMESTAMP) - Record creation timestamp
+- `updated_at` (TIMESTAMP) - Last update timestamp
 
 ### Configuration
 
@@ -302,46 +312,82 @@ spring.datasource.password=compose-postgres
 spring.jpa.hibernate.ddl-auto=update
 ```
 
-## Testing with Postman
+## Testing
 
-### Quick Setup
+### Using cURL
 
-1. **Import Base URL Variable**
-   - Create environment variable: `baseURL` = `http://localhost:8080`
-
-2. **Import API Key Variables**
-   - `webToken` = `web-portal-key-12345`
-   - `adminToken` = `admin-dashboard-key-11111`
-
-3. **Add Header to All Requests**
-   ```
-   Key: X-Auth-Token
-   Value: {{adminToken}}
-   ```
-
-### Example Requests
-
-**Get All Customers (Read Access)**
-```
-GET {{baseURL}}/api/v1/customers
-Headers:
-  X-Auth-Token: {{webToken}}
+**Get All Customers**
+```bash
+curl -X GET http://localhost:8080/api/v1/customers
 ```
 
-**Create Customer (Admin Only)**
+**Get Customer by ID**
+```bash
+curl -X GET http://localhost:8080/api/v1/customers/1
 ```
-POST {{baseURL}}/api/v1/customers
-Headers:
-  X-Auth-Token: {{adminToken}}
-  Content-Type: application/json
-Body:
-{
+
+**Get Customer by Email**
+```bash
+curl -X GET http://localhost:8080/api/v1/customers/email/john.doe@example.com
+```
+
+**Search Customers**
+```bash
+curl -X GET "http://localhost:8080/api/v1/customers/search?term=john"
+```
+
+**Get Customer Count**
+```bash
+curl -X GET http://localhost:8080/api/v1/customers/count
+```
+
+**Create Customer**
+```bash
+curl -X POST http://localhost:8080/api/v1/customers \
+  -H "Content-Type: application/json" \
+  -d '{
     "firstName": "Jane",
     "lastName": "Smith",
     "email": "jane.smith@example.com",
     "phoneNumber": "+1987654321"
-}
+  }'
 ```
+
+**Update Customer**
+```bash
+curl -X PUT http://localhost:8080/api/v1/customers/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Jane",
+    "lastName": "Doe-Smith",
+    "email": "jane.smith@example.com",
+    "phoneNumber": "+1987654321"
+  }'
+```
+
+**Delete Customer**
+```bash
+curl -X DELETE http://localhost:8080/api/v1/customers/1
+```
+
+### Using Postman
+
+1. **Create Environment Variable**
+   - `baseURL` = `http://localhost:8080`
+
+2. **Create Requests**
+   - Use the cURL examples above and import them into Postman
+   - Or manually create requests using the endpoints from the API Documentation section
+
+3. **Example Collection Structure**
+   ```
+   Customer API
+   ├── Get All Customers (GET {{baseURL}}/api/v1/customers)
+   ├── Get Customer by ID (GET {{baseURL}}/api/v1/customers/1)
+   ├── Create Customer (POST {{baseURL}}/api/v1/customers)
+   ├── Update Customer (PUT {{baseURL}}/api/v1/customers/1)
+   └── Delete Customer (DELETE {{baseURL}}/api/v1/customers/1)
+   ```
 
 ## Project Structure
 
@@ -376,20 +422,36 @@ spring-ai-app/
 ## Dependencies
 
 Key dependencies:
-- Spring Boot 3.5.8
-- Spring Data JPA
-- PostgreSQL Driver
-- Spring Boot Validation
-- Spring Boot Actuator
-- Lombok
-- **spring-security-starter** (custom library)
+- **Spring Boot 3.5.8** - Core framework
+- **Spring Data JPA** - Database access layer
+- **PostgreSQL Driver** - Database connectivity
+- **Spring Boot Validation** - Request validation
+- **Spring Boot Actuator** - Monitoring and health checks
+- **Lombok** - Reduce boilerplate code
+- **H2 Database** - In-memory database for testing
 
 ## Monitoring
 
-Health check endpoint:
+### Health Check
+
+The application includes Spring Boot Actuator for monitoring:
+
+```bash
+# Health check
+curl http://localhost:8080/actuator/health
 ```
-GET http://localhost:8080/actuator/health
+
+Response:
+```json
+{
+  "status": "UP"
+}
 ```
+
+### Available Actuator Endpoints
+
+- `/actuator/health` - Application health status
+- Additional endpoints can be enabled in [application.properties](src/main/resources/application.properties)
 
 ## Contributing
 
@@ -409,4 +471,4 @@ For questions or support, please contact the development team.
 
 ---
 
-**Built with ❤️ using Spring Boot and the custom spring-security-starter library**
+**Built with Spring Boot 3.5.8 and Java 21**
