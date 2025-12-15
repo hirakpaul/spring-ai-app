@@ -1,0 +1,82 @@
+# Compiled class files
+*.class
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Log files
+*.log
+logs/
+spring.log
+
+# Package Files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# Maven
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE - VSCode
+.vscode/
+*.code-workspace
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDE - Eclipse / STS
+.settings/
+.classpath
+.project
+.metadata
+.apt_generated
+.factorypath
+.springBeans
+.sts4-cache
+
+# IDE - NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Environment variables & Secrets
+.env
+.env.local
+.env.*.local
+*.env
+application-local.properties
+application-secret.properties
+
+# Docker
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Spring Boot
+*.pid
+spring-boot-devtools.properties
+
+# Database
+*.db
+*.sqlite
+
+# Documentation (generated)
+HELP.md
