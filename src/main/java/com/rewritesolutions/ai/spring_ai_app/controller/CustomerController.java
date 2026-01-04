@@ -18,6 +18,20 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
+/**
+ * REST Controller for customer management operations.
+ * Provides HTTP endpoints for CRUD operations and search functionality on customer resources.
+ *
+ * <p>All endpoints are prefixed with {@code /api/v1/customers}. This controller handles
+ * validation, delegates business logic to {@link CustomerService}, and returns appropriate
+ * HTTP responses.</p>
+ *
+ * <p>API documentation is available via Swagger/OpenAPI annotations.</p>
+ *
+ * @author Rewrite Solutions
+ * @version 1.0
+ * @since 1.0
+ */
 @RestController
 @Tag(name = "Customer API", description = "Customer management operations")
 @RequestMapping("/api/v1/customers")
@@ -25,8 +39,16 @@ import java.util.List;
 @Slf4j
 public class CustomerController {
 
+    /** Service layer for customer business logic */
     private final CustomerService customerService;
 
+    /**
+     * Creates a new customer.
+     * Endpoint: POST /api/v1/customers
+     *
+     * @param request the validated customer data from request body
+     * @return HTTP 201 with the created customer response
+     */
     @Operation(summary = "Create a new customer", description = "Creates a new customer and returns the created customer details")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Customer created successfully"),
@@ -39,6 +61,13 @@ public class CustomerController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    /**
+     * Retrieves a customer by their unique ID.
+     * Endpoint: GET /api/v1/customers/{id}
+     *
+     * @param id the customer's unique identifier
+     * @return HTTP 200 with the customer response, or HTTP 404 if not found
+     */
     @Operation(summary = "Get customer by ID", description = "Fetch a customer using its unique ID")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Customer found"),
@@ -51,6 +80,13 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Retrieves a customer by their email address.
+     * Endpoint: GET /api/v1/customers/email/{email}
+     *
+     * @param email the customer's email address
+     * @return HTTP 200 with the customer response, or HTTP 404 if not found
+     */
     @Operation(summary = "Get customer by email", description = "Fetch customer details using email address")
     @GetMapping("/email/{email}")
     public ResponseEntity<CustomerResponse> getCustomerByEmail(@PathVariable String email) {
@@ -59,6 +95,12 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Retrieves all customers in the system.
+     * Endpoint: GET /api/v1/customers
+     *
+     * @return HTTP 200 with a list of all customers
+     */
     @Operation(summary = "Get all customers", description = "Returns a list of all customers")
     @GetMapping
     public ResponseEntity<List<CustomerResponse>> getAllCustomers() {
@@ -67,6 +109,13 @@ public class CustomerController {
         return ResponseEntity.ok(responses);
     }
 
+    /**
+     * Searches for customers by name.
+     * Endpoint: GET /api/v1/customers/search?term={searchTerm}
+     *
+     * @param term the search term to match against customer names
+     * @return HTTP 200 with a list of matching customers
+     */
     @Operation(summary = "Search customers", description = "Search customers using a keyword")
     @GetMapping("/search")
     public ResponseEntity<List<CustomerResponse>> searchCustomers(@RequestParam String term) {
@@ -75,6 +124,12 @@ public class CustomerController {
         return ResponseEntity.ok(responses);
     }
 
+    /**
+     * Returns the total count of customers.
+     * Endpoint: GET /api/v1/customers/count
+     *
+     * @return HTTP 200 with the customer count
+     */
     @Operation(summary = "Count customers", description = "Returns total number of customers")
     @GetMapping("/count")
     public ResponseEntity<Long> countCustomers() {
@@ -83,6 +138,14 @@ public class CustomerController {
         return ResponseEntity.ok(count);
     }
 
+    /**
+     * Updates an existing customer.
+     * Endpoint: PUT /api/v1/customers/{id}
+     *
+     * @param id the customer's unique identifier
+     * @param customerRequest the validated updated customer data
+     * @return HTTP 200 with the updated customer response
+     */
     @Operation(summary = "Update customer", description = "Update existing customer details by ID")
     @PutMapping("/{id}")
     public ResponseEntity<CustomerResponse> updateCustomer(
@@ -93,6 +156,13 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Deletes a customer from the system.
+     * Endpoint: DELETE /api/v1/customers/{id}
+     *
+     * @param id the customer's unique identifier
+     * @return HTTP 204 on successful deletion, or HTTP 404 if not found
+     */
     @Operation(summary = "Delete customer", description = "Delete a customer by ID")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Customer deleted successfully"),
